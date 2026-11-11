@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Event Hub | Xavier Cedeño</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              500: '#3b82f6',
+              600: '#2563eb',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.1); }
+    }
+    .pulse-dot {
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <i class="fa-solid fa-bolt text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+            Enterprise Event Hub
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Spring Boot + Kafka</span>
+          </h1>
+          <p class="text-xs text-slate-400">Desarrollado por <span class="text-slate-200 font-medium">Xavier Cedeño Febres</span> • AI-First Architecture</p>
+        </div>
+      </div>
+
+      <!-- Health Status Badge -->
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 bg-slate-800/80 border border-slate-700/60 rounded-full px-3 py-1 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+          <span id="health-text" class="text-slate-300 font-mono">Backend: Verificando...</span>
+        </div>
+        <a href="/h2-console" target="_blank" class="hidden sm:inline-flex items-center text-xs text-slate-400 hover:text-white transition gap-1.5 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700">
+          <i class="fa-solid fa-database text-blue-400"></i> H2 DB Console
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+
+    <!-- KPI Metric Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Pagos</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+            <i class="fa-solid fa-receipt text-sm"></i>
+          </div>
+        </div>
+        <p id="total-count" class="text-2xl font-bold text-white mt-2">0</p>
+        <p class="text-xs text-slate-500 mt-1">Transacciones procesadas</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Monto Total</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <i class="fa-solid fa-dollar-sign text-sm"></i>
+          </div>
+        </div>
+        <p id="total-amount" class="text-2xl font-bold text-emerald-400 mt-2">$0.00</p>
+        <p class="text-xs text-slate-500 mt-1">Ingresos recaudados</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Topic de Kafka</span>
+          <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+            <i class="fa-solid fa-share-nodes text-sm"></i>
+          </div>
+        </div>
+        <p class="text-sm font-semibold text-purple-300 mt-3 font-mono">pagos-completados</p>
+        <p class="text-xs text-slate-500 mt-1">Event Streaming KRaft</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Observabilidad</span>
+          <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center">
+            <i class="fa-solid fa-chart-line text-sm"></i>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 mt-2">
+          <a href="/actuator/prometheus" target="_blank" class="text-xs text-orange-400 hover:underline">/prometheus</a>
+          <span class="text-slate-600">•</span>
+          <a href="/actuator/health" target="_blank" class="text-xs text-orange-400 hover:underline">/health</a>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">Sondas K8s Actuator</p>
+      </div>
+    </div>
+
+    <!-- Main Workspace: Form (Left) + Table & Kafka Feed (Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <!-- Form: Registrar Pago -->
+      <div class="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm h-fit">
+        <div class="flex items-center space-x-2 border-b border-slate-800 pb-4 mb-5">
+          <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Registrar Nuevo Pago</h2>
+        </div>
+
+        <form id="payment-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nombre del Residente / Inquilino</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-sm">
+                <i class="fa-solid fa-user"></i>
+              </span>
+              <input type="text" id="residentName" required placeholder="Ej: Xavier Cedeño"
+                class="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Apartamento / Unidad</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-sm">
+                <i class="fa-solid fa-door-open"></i>
+              </span>
+              <input type="text" id="apartmentUnit" required placeholder="Ej: 4B, 2A, PH-1"
+                class="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Monto del Pago (USD)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-sm">
+                <i class="fa-solid fa-dollar-sign"></i>
+              </span>
+              <input type="number" step="0.01" min="1" id="amount" required placeholder="Ej: 75.00"
+                class="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn"
+            class="w-full mt-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center justify-center gap-2 text-sm">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Guardar en DB y Disparar Evento</span>
+          </button>
+        </form>
+
+        <!-- Explanatory Card -->
+        <div class="mt-6 bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-400 space-y-2">
+          <p class="font-semibold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-blue-400"></i> ¿Qué ocurre al hacer clic?
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-slate-400">
+            <li>El <strong class="text-slate-300">PaymentController</strong> recibe el JSON vía POST.</li>
+            <li>El <strong class="text-slate-300">PaymentRepository</strong> guarda la fila en la base de datos relacional.</li>
+            <li>El <strong class="text-slate-300">PaymentEventProducer</strong> emite un evento asíncrono a Kafka.</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Live Payments Table & Event Console (Right) -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- Table Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+            <div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">Historial de Pagos Registrados</h2>
+              <p class="text-xs text-slate-500">Datos obtenidos en vivo desde Spring Data JPA (PostgreSQL / H2)</p>
+            </div>
+
+            <!-- Quick Filter by Apartment -->
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">Filtrar:</span>
+              <button onclick="loadPayments()" class="px-2.5 py-1 text-xs rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 transition">Todos</button>
+              <button onclick="filterByUnit('4B')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition">Unidad 4B</button>
+              <button onclick="filterByUnit('2A')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition">Unidad 2A</button>
+              <button onclick="filterByUnit('5C')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition">Unidad 5C</button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="overflow-x-auto mt-4">
+            <table class="w-full text-left text-xs">
+              <thead class="text-slate-400 border-b border-slate-800 bg-slate-950/40">
+                <tr>
+                  <th class="py-3 px-3">ID</th>
+                  <th class="py-3 px-3">Residente</th>
+                  <th class="py-3 px-3">Unidad</th>
+                  <th class="py-3 px-3">Monto</th>
+                  <th class="py-3 px-3">Estado</th>
+                  <th class="py-3 px-3">Fecha</th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                <tr>
+                  <td colspan="6" class="py-8 text-center text-slate-500">Cargando pagos desde la base de datos...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Live Kafka Event Stream Simulator Feed -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-purple-400 pulse-dot"></div>
+              <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Consola de Eventos en Tiempo Real (Kafka Stream)</h3>
+            </div>
+            <span class="text-xs font-mono text-purple-400">Topic: pagos-completados</span>
+          </div>
+          <div id="event-feed" class="bg-slate-950 rounded-xl p-3.5 font-mono text-xs text-slate-400 h-36 overflow-y-auto space-y-1.5 border border-slate-800/80">
+            <div class="text-slate-600 text-xs">Esperando eventos de transacciones...</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <p>Enterprise Event Hub • Spring Boot 4 (Java 21 LTS) + Apache Kafka + Spring Data JPA • Xavier Cedeño Febres</p>
+  </footer>
+
+  <script>
+    const API_BASE = '/api/payments';
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/status');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('health-text').innerText = 'API: ' + data.status + ' (Java 21)';
+          document.getElementById('health-text').className = 'text-emerald-400 font-mono';
+        }
+      } catch (err) {
+        document.getElementById('health-text').innerText = 'API Offline';
+        document.getElementById('health-text').className = 'text-red-400 font-mono';
+      }
+    }
+
+    async function loadPayments() {
+      try {
+        const res = await fetch(API_BASE);
+        if (!res.ok) return;
+        const payments = await res.json();
+        renderTable(payments);
+      } catch (err) {
+        console.error("Error al cargar pagos:", err);
+      }
+    }
+
+    async function filterByUnit(unit) {
+      try {
+        const res = await fetch(`${API_BASE}/unit/${unit}`);
+        if (!res.ok) return;
+        const payments = await res.json();
+        renderTable(payments);
+        logEvent(`[FILTRO APLICADO] Consultando pagos de la unidad: ${unit} (${payments.length} resultados)`);
+      } catch (err) {
+        console.error("Error al filtrar:", err);
+      }
+    }
+
+    function renderTable(payments) {
+      const tbody = document.getElementById('payments-tbody');
+      if (!payments || payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-500">No hay pagos registrados aún. Registra el primero en el formulario.</td></tr>`;
+        document.getElementById('total-count').innerText = '0';
+        document.getElementById('total-amount').innerText = '$0.00';
+        return;
+      }
+
+      let total = 0;
+      tbody.innerHTML = payments.map(p => {
+        total += parseFloat(p.amount || 0);
+        const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString() + ' ' + new Date(p.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Reciente';
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-3 px-3 font-mono text-slate-400 font-medium">#${p.id}</td>
+            <td class="py-3 px-3 font-semibold text-white">${escapeHtml(p.residentName)}</td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded-md bg-slate-800 text-blue-400 border border-slate-700 font-mono font-medium">${escapeHtml(p.apartmentUnit)}</span>
+            </td>
+            <td class="py-3 px-3 font-mono font-bold text-emerald-400">$${parseFloat(p.amount).toFixed(2)}</td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${p.status}</span>
+            </td>
+            <td class="py-3 px-3 text-slate-500 font-mono text-xs">${dateStr}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('total-count').innerText = payments.length;
+      document.getElementById('total-amount').innerText = '$' + total.toFixed(2);
+    }
+
+    function logEvent(msg) {
+      const feed = document.getElementById('event-feed');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = "text-purple-300";
+      div.innerHTML = `<span class="text-slate-500">[${time}]</span> ${msg}`;
+      feed.prepend(div);
+    }
+
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+
+      const residentName = document.getElementById('residentName').value;
+      const apartmentUnit = document.getElementById('apartmentUnit').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ residentName, apartmentUnit, amount })
+        });
+
+        if (res.ok) {
+          const created = await res.json();
+          logEvent(`📢 <strong>[EVENTO KAFKA DISPARADO]</strong> Pago #${created.id} emitido al topic 'pagos-completados' para ${created.residentName} (${created.apartmentUnit}) por $${created.amount}`);
+          document.getElementById('payment-form').reset();
+          loadPayments();
+        } else {
+          alert("Error al registrar pago en el backend.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error de conexión con el backend.");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>Guardar en DB y Disparar Evento</span>`;
+      }
+    });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    // Inicializar
+    checkHealth();
+    loadPayments();
+    setInterval(checkHealth, 10000);
+  </script>
+</body>
+</html>
+
